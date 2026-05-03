@@ -1,134 +1,214 @@
-# HackerRank Orchestrate
+![Banner](banner.png)
 
-Starter repository for the **HackerRank Orchestrate** 24-hour hackathon (May 1–2, 2026).
+# Multi-Domain Support Triage Agent
 
-Build a terminal-based AI agent that triages real support tickets across three product ecosystems; **HackerRank**, **Claude**, and **Visa** — using only the support corpus shipped in this repo.
+## Overview
 
-Read [`problem_statement.md`](./problem_statement.md) for the full task spec, input/output schema, and allowed values, and [`evalutation_criteria.md`](./evalutation_criteria.md) for how submissions are scored.
+This project implements a **terminal-based support triage system** that processes customer support tickets and decides whether to **respond automatically or escalate** to human support.
 
----
+Unlike a standard chatbot, this system focuses on **decision-making**, not just answering. It combines classification, risk detection, retrieval, and confidence-based reasoning to ensure **safe, grounded, and reliable responses**.
 
-## Contents
+The system is **corpus-grounded**:
 
-1. [Repository layout](#repository-layout)
-2. [What you need to build](#what-you-need-to-build)
-3. [Where your code goes](#where-your-code-goes)
-4. [Quickstart](#quickstart)
-5. [Chat transcript logging](#chat-transcript-logging)
-6. [Submission](#submission)
-7. [Judge interview](#judge-interview)
-8. [Evaluation criteria](#evaluation-criteria)
+* All responses are extracted strictly from a local support corpus (`data/`)
+* No external APIs or hallucinated answers
+* High-risk or low-confidence cases are escalated
 
 ---
 
-## Repository layout
+## Key Features
+
+* **Multi-domain support**: Works across HackerRank, Claude, and Visa datasets
+* **Request classification**: Categorizes tickets into `product_issue`, `feature_request`, `bug`, or `invalid`
+* **Risk detection**: Identifies sensitive (payments, accounts) and malicious requests
+* **FAISS-based retrieval**: Efficient semantic search using dense embeddings
+* **Structure-aware filtering**: Uses company + folder hierarchy (PageIndex-style)
+* **Confidence scoring**: Estimates retrieval reliability from similarity scores
+* **Decision engine**: Chooses between **reply vs escalate** using risk + confidence
+* **Extractive responses**: Uses only corpus snippets (no hallucination)
+* **Justification generation**: Explains every decision clearly
+
+---
+
+## Architecture
+
+Pipeline:
 
 ```
-.
-├── AGENTS.md                       # Rules for AI coding tools + transcript logging
-├── problem_statement.md            # Full task description and I/O schema
-├── README.md                       # You are here
-├── code/                           # ← Build your agent here
-│   └── main.py                     #   Entry point (rename/extend as you like)
-├── data/                           # Local-only support corpus (no network needed)
-│   ├── hackerrank/                 #   HackerRank help center
-│   ├── claude/                     #   Claude Help Center export
-│   └── visa/                       #   Visa consumer + small-business support
-└── support_tickets/
-    ├── sample_support_tickets.csv  # Inputs + expected outputs (for development)
-    ├── support_tickets.csv         # Inputs only (run your agent on these)
-    └── output.csv                  # Write your agent's predictions here
+Input → Normalization → Classification → Risk Detection → Retrieval → Confidence → Decision → Response → Output
 ```
 
----
+### Explanation
 
-## What you need to build
-
-A terminal-based agent that, for each row in `support_tickets/support_tickets.csv`, produces:
-
-| Column         | Allowed values                                          |
-| -------------- | ------------------------------------------------------- |
-| `status`       | `replied`, `escalated`                                  |
-| `product_area` | most relevant support category / domain area            |
-| `response`     | user-facing answer grounded in the provided corpus      |
-| `justification`| concise explanation of the routing/answering decision   |
-| `request_type` | `product_issue`, `feature_request`, `bug`, `invalid`    |
-
-Hard requirements (from `problem_statement.md`):
-
-- Must be **terminal-based**.
-- Must use **only the provided support corpus** (no live web calls for ground-truth answers).
-- Must **escalate** high-risk, sensitive, or unsupported cases instead of guessing.
-- Must avoid hallucinated policies or unsupported claims.
-
-Beyond that you are free to bring your own approach — RAG, vector DBs, tool use, structured output, agent frameworks, classical ML, or anything else.
+* **Input**: Read support tickets from CSV
+* **Normalization**: Clean and standardize text
+* **Classification**: Identify request type
+* **Risk Detection**: Detect sensitive or malicious intent
+* **Retrieval**: Search relevant documents using FAISS
+* **Confidence**: Measure reliability of retrieved results
+* **Decision**: Decide to reply or escalate
+* **Response**: Generate grounded answer (extractive)
+* **Output**: Write results to CSV
 
 ---
 
-## Where your code goes
+## Retrieval Strategy
 
-All of your work belongs in [`code/`](./code/). The repo ships with an empty `code/main.py` you can grow into your full agent — add more modules (`agent.py`, `retriever.py`, `classifier.py`, etc.) next to it as needed.
+* Uses **FAISS (IndexFlatIP)** with normalized embeddings
+* Embedding model: `sentence-transformers/all-MiniLM-L6-v2`
+* Inner product ≈ cosine similarity
 
-Conventions:
+### Enhancements
 
-- Put a **README inside `code/`** describing how to install dependencies and run your agent.
-- Read secrets **from environment variables only** (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, …). Copy `.env.example` → `.env` (already gitignored) if you keep one. **Never hardcode keys.**
-- Be **deterministic** where possible. Seed any random sampling.
-- Write responses to `support_tickets/output.csv`.
+* **Company filtering**: Prioritizes documents from the same domain
+* **Fallback mechanism**: Uses broader results if filtering is too strict
+* **Path-based reranking**: Boosts documents whose paths match query keywords
 
 ---
 
-## Quickstart
+## Decision Logic
 
-Clone this repository:
+| Condition                  | Action                         |
+| -------------------------- | ------------------------------ |
+| Malicious input            | Escalate                       |
+| No documents found         | Escalate                       |
+| Sensitive + low confidence | Escalate                       |
+| Confidence < 0.35          | Escalate                       |
+| 0.35 ≤ confidence < 0.5    | Escalate (except bugs → reply) |
+| High confidence            | Reply                          |
+
+### Key Principle
+
+> The system prioritizes **correctness and safety over aggressive automation**.
+
+---
+
+## Setup Instructions
+
+### 1. Clone the repository
 
 ```bash
-git clone git@github.com:interviewstreet/hackerrank-orchestrate-may26.git
-cd hackerrank-orchestrate-may26
+git clone <your-repo-url>
+cd <repo-name>
 ```
 
-You are free to use any language or runtime. We recommend **Python**, **JavaScript**, or **TypeScript**.
+### 2. Install dependencies
+
+```bash
+pip install sentence-transformers faiss-cpu numpy pandas
+```
+
+### 3. Run the system
+
+```bash
+python code/main.py
+```
+
+Output will be generated at:
+
+```
+support_tickets/output.csv
+```
 
 ---
 
-## Chat transcript logging
+## Project Structure
 
-This repo ships with an `AGENTS.md` that any modern AI coding tool (Cursor, Claude Code, Codex, Gemini CLI, Copilot, etc.) will read. It instructs the tool to append every conversation turn to a single shared log file:
+```
+code/
+├── corpus/          # loading, structuring, indexing
+├── retrieval/       # retriever logic
+├── classification/  # request type classification
+├── decision/        # risk, confidence, decision engine
+├── generation/      # response + justification
+├── output/          # CSV writer
+└── main.py          # pipeline entry point
 
-| Platform       | Path                                              |
-| -------------- | ------------------------------------------------- |
-| macOS / Linux  | `$HOME/hackerrank_orchestrate/log.txt`            |
-| Windows        | `%USERPROFILE%\hackerrank_orchestrate\log.txt`    |
-
-You don't need to do anything to enable it — just use your AI tool normally. You'll upload this `log.txt` as your chat transcript at submission time.
-
----
-
-## Submission
-
-Submit on the HackerRank Community Platform:
-<https://www.hackerrank.com/contests/hackerrank-orchestrate-may26/challenges/support-agent/submission>
-
-You will upload **three** files:
-
-1. **Code zip** — zip your `code/` directory and upload it. Exclude virtualenvs, `node_modules`, build artifacts, the `data/` corpus, and the `support_tickets/` CSVs.
-2. **Predictions CSV** — your agent's output for `support_tickets/support_tickets.csv` (i.e. the populated `output.csv`).
-3. **Chat transcript** — the `log.txt` from the path in [Chat transcript logging](#chat-transcript-logging).
+data/                # support corpus (hackerrank, claude, visa)
+support_tickets/     # input + output CSV files
+```
 
 ---
 
-## Judge interview
+## Output Format
 
-After a successful submission, your AI Judge interview will happen within a few hours after the hackathon ends. It will stay open for the next 4 hours. 
+Each row in `output.csv` includes:
 
-The AI Judge will have access to your submission and may ask about your approach, decisions, and how you used AI while building your solution. The interview will be 30 minutes long, and keeping your camera on is mandatory.
-
-Results will be announced on May 15, 2026
+* `issue`
+* `subject`
+* `company`
+* `status` (`replied` / `escalated`)
+* `product_area`
+* `response`
+* `justification`
+* `request_type`
 
 ---
 
-## Evaluation criteria
+## Example
 
-Submissions are scored across four dimensions: agent design (your `code/`), the AI Judge interview, output accuracy on `support_tickets/output.csv`, and AI fluency from your chat transcript.
+**Input:**
 
-See [`evalutation_criteria.md`](./evalutation_criteria.md) for the full rubric.
+```
+"My payment failed but money was deducted"
+```
+
+**Output:**
+
+```
+status: escalated
+product_area: payments
+request_type: product_issue
+```
+
+---
+
+## Design Decisions
+
+* **FAISS**: Fast and efficient semantic search without external dependencies
+* **Extractive responses**: Ensures zero hallucination and full traceability
+* **Rule-based classification**: Simple, interpretable, and reliable
+* **Confidence-based escalation**: Avoids incorrect responses under uncertainty
+* **Structure-aware retrieval**: Improves relevance using domain context
+
+> The system emphasizes **decision-making over answer generation**, which is critical in real-world support systems.
+
+---
+
+## Limitations
+
+* Rule-based classification may miss nuanced intent
+* Multi-intent handling is basic (heuristic splitting)
+* `product_area` relies on keyword mapping
+
+---
+
+## Future Improvements
+
+* LLM-assisted reasoning (while staying grounded)
+* Improved ranking (cross-encoder reranking)
+* Better multi-intent understanding
+* Learning-based confidence calibration
+
+---
+
+## AI Usage Disclosure
+
+AI tools were used to assist with implementation and iteration speed.
+However:
+
+* System architecture and design decisions were **manually defined**
+* Logic for classification, retrieval, and decision-making was **explicitly engineered**
+* Outputs were validated against the problem constraints
+
+---
+
+## Conclusion
+
+This project demonstrates a **real-world support triage system** that prioritizes:
+
+* Safety
+* Correctness
+* Explainability
+
+It goes beyond simple chatbots by incorporating **structured reasoning, retrieval grounding, and decision intelligence**.
