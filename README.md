@@ -88,8 +88,8 @@ Input → Normalization → Classification → Risk Detection → Retrieval → 
 ### 1. Clone the repository
 
 ```bash
-git clone <your-repo-url>
-cd <repo-name>
+git clone https://github.com/Anish-530/Multi-Domain-Support-Triage-Agent.git
+cd Multi-Domain-Support-Triage-Agent
 ```
 
 ### 2. Install dependencies
