@@ -76,6 +76,7 @@ Input → Normalization → Classification → Risk Detection → Retrieval → 
 | Confidence < 0.35          | Escalate                       |
 | 0.35 ≤ confidence < 0.5    | Escalate (except bugs → reply) |
 | High confidence            | Reply                          |
+| -------------------------- | ------------------------------ |
 
 ### Key Principle
 
