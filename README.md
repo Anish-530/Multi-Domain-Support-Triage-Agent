@@ -213,3 +213,9 @@ This project demonstrates a **real-world support triage system** that prioritize
 * Explainability
 
 It goes beyond simple chatbots by incorporating **structured reasoning, retrieval grounding, and decision intelligence**.
+
+---
+
+## Author
+
+This project is created and maintained by **Anish Nayak**
