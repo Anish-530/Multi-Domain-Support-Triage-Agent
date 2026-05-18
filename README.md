@@ -217,4 +217,4 @@ It goes beyond simple chatbots by incorporating **structured reasoning, retrieva
 
 ## Author
 
-This project is created and maintained by **Anish Nayak**
+This project is created and maintained by [**Anish Nayak**](https://www.linkedin.com/in/anish-nayak-231a90270)
